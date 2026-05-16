@@ -232,10 +232,3 @@ The application follows the Model-View-Controller (MVC) pattern:
 
 MIT License - Feel free to use this project for learning and interview preparation.
 
-## Support
-
-For questions or issues, please open an issue on GitHub.
-
----
-
-**Built with ❤️ for Campus Placements**
