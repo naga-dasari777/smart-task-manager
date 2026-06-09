@@ -224,7 +224,7 @@ class TaskServiceTest {
 
     @Test
     void deleteTask_exists() {
-        when(taskRepository.existsById(1L)).thenReturn(true);
+        when(taskRepository.findById(1L)).thenReturn(Optional.of(sampleTask));
         doNothing().when(taskRepository).deleteById(1L);
 
         assertDoesNotThrow(() -> taskService.deleteTask(1L));
@@ -233,7 +233,7 @@ class TaskServiceTest {
 
     @Test
     void deleteTask_notFound() {
-        when(taskRepository.existsById(99L)).thenReturn(false);
+        when(taskRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () -> taskService.deleteTask(99L));
         verify(taskRepository, never()).deleteById(anyLong());
@@ -331,6 +331,29 @@ class TaskServiceTest {
         List<TaskDTO> result = taskService.getTasksByPriority("low");
 
         assertTrue(result.isEmpty());
+    }
+
+    // --- invalid enum values ---
+
+    @Test
+    void createTask_invalidPriority_throwsIllegalArgument() {
+        TaskDTO dto = TaskDTO.builder().title("Test").priority("URGENT").build();
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> taskService.createTask(dto));
+        assertTrue(ex.getMessage().contains("URGENT"));
+    }
+
+    @Test
+    void getTasksByStatus_invalidStatus_throwsIllegalArgument() {
+        assertThrows(IllegalArgumentException.class,
+                () -> taskService.getTasksByStatus("INVALID"));
+    }
+
+    @Test
+    void getTasksByPriority_invalidPriority_throwsIllegalArgument() {
+        assertThrows(IllegalArgumentException.class,
+                () -> taskService.getTasksByPriority("CRITICAL"));
     }
 
     // --- getTaskStatistics ---

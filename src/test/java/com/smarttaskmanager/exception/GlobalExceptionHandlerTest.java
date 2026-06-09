@@ -34,6 +34,7 @@ class GlobalExceptionHandlerTest {
 
         mockMvc.perform(get("/tasks/999"))
                 .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success", is(false)))
                 .andExpect(jsonPath("$.status", is(404)))
                 .andExpect(jsonPath("$.error", is("Not Found")))
                 .andExpect(jsonPath("$.message", is("Task not found with id: 999")))
@@ -53,6 +54,19 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void handleIllegalArgumentException_returns400() throws Exception {
+        when(taskService.getTasksByStatus("INVALID"))
+                .thenThrow(new IllegalArgumentException("Invalid status: 'INVALID'. Accepted values: PENDING, COMPLETED"));
+
+        mockMvc.perform(get("/tasks/filter/status").param("status", "INVALID"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status", is(400)))
+                .andExpect(jsonPath("$.error", is("Bad Request")))
+                .andExpect(jsonPath("$.message", containsString("INVALID")))
+                .andExpect(jsonPath("$.success", is(false)));
+    }
+
+    @Test
     void handleGenericException_returns500() throws Exception {
         when(taskService.getTaskById(anyLong()))
                 .thenThrow(new RuntimeException("Unexpected error"));
@@ -60,6 +74,7 @@ class GlobalExceptionHandlerTest {
         mockMvc.perform(get("/tasks/1"))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.status", is(500)))
-                .andExpect(jsonPath("$.error", is("Internal Server Error")));
+                .andExpect(jsonPath("$.error", is("Internal Server Error")))
+                .andExpect(jsonPath("$.success", is(false)));
     }
 }

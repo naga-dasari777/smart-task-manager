@@ -22,11 +22,18 @@ async function apiRequest(url, options = {}, config = {}) {
     const { errorContext = 'API request', errorToast, fallback = null } = config;
     try {
         const response = await fetch(url, options);
-        if (!response.ok) throw new Error(`${errorContext} failed`);
+        if (!response.ok) {
+            let serverMessage;
+            try {
+                const body = await response.json();
+                serverMessage = body.message;
+            } catch (_) { /* response not JSON */ }
+            throw new Error(serverMessage || `${errorContext} failed`);
+        }
         return await response.json();
     } catch (error) {
         console.error(`Error: ${errorContext}:`, error);
-        if (errorToast) showToast(errorToast, 'danger');
+        if (errorToast) showToast(error.message || errorToast, 'danger');
         return fallback;
     }
 }

@@ -42,6 +42,7 @@ public class TaskService {
      *
      * @return List of all tasks as DTOs
      */
+    @Transactional(readOnly = true)
     public List<TaskDTO> getAllTasks() {
         log.info("Fetching all tasks");
         return toDtoList(taskRepository.findAll());
@@ -55,6 +56,7 @@ public class TaskService {
      * @return Task DTO
      * @throws ResourceNotFoundException if task doesn't exist
      */
+    @Transactional(readOnly = true)
     public TaskDTO getTaskById(Long id) {
         log.info("Fetching task with id: {}", id);
         return convertToDTO(findTaskOrThrow(id));
@@ -76,7 +78,7 @@ public class TaskService {
         
         // Set priority with default value if not provided
         if (taskDTO.getPriority() != null) {
-            task.setPriority(Task.Priority.valueOf(taskDTO.getPriority().toUpperCase()));
+            task.setPriority(parsePriority(taskDTO.getPriority()));
         } else {
             task.setPriority(Task.Priority.MEDIUM);
         }
@@ -110,13 +112,13 @@ public class TaskService {
             task.setDescription(taskDTO.getDescription());
         }
         if (taskDTO.getPriority() != null) {
-            task.setPriority(Task.Priority.valueOf(taskDTO.getPriority().toUpperCase()));
+            task.setPriority(parsePriority(taskDTO.getPriority()));
         }
         if (taskDTO.getDueDate() != null) {
             task.setDueDate(taskDTO.getDueDate());
         }
         if (taskDTO.getStatus() != null) {
-            task.setStatus(Task.TaskStatus.valueOf(taskDTO.getStatus().toUpperCase()));
+            task.setStatus(parseStatus(taskDTO.getStatus()));
         }
         
         Task updatedTask = taskRepository.save(task);
@@ -162,6 +164,7 @@ public class TaskService {
      * @param keyword Search term
      * @return List of matching tasks
      */
+    @Transactional(readOnly = true)
     public List<TaskDTO> searchTasks(String keyword) {
         log.info("Searching tasks with keyword: {}", keyword);
         return toDtoList(taskRepository.searchByKeyword(keyword));
@@ -173,9 +176,10 @@ public class TaskService {
      * @param status Task status to filter by
      * @return List of tasks with specified status
      */
+    @Transactional(readOnly = true)
     public List<TaskDTO> getTasksByStatus(String status) {
         log.info("Filtering tasks by status: {}", status);
-        Task.TaskStatus taskStatus = Task.TaskStatus.valueOf(status.toUpperCase());
+        Task.TaskStatus taskStatus = parseStatus(status);
         return toDtoList(taskRepository.findByStatus(taskStatus));
     }
 
@@ -185,9 +189,10 @@ public class TaskService {
      * @param priority Task priority to filter by
      * @return List of tasks with specified priority
      */
+    @Transactional(readOnly = true)
     public List<TaskDTO> getTasksByPriority(String priority) {
         log.info("Filtering tasks by priority: {}", priority);
-        Task.Priority taskPriority = Task.Priority.valueOf(priority.toUpperCase());
+        Task.Priority taskPriority = parsePriority(priority);
         return toDtoList(taskRepository.findByPriority(taskPriority));
     }
 
@@ -197,7 +202,8 @@ public class TaskService {
      *
      * @return Map containing statistics
      */
-    public Object getTaskStatistics() {
+    @Transactional(readOnly = true)
+    public Statistics getTaskStatistics() {
         log.info("Fetching task statistics");
         long totalTasks = taskRepository.count();
         long completedTasks = taskRepository.countByStatus(Task.TaskStatus.COMPLETED);
@@ -225,6 +231,24 @@ public class TaskService {
         return tasks.stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
+    }
+
+    private Task.Priority parsePriority(String priority) {
+        try {
+            return Task.Priority.valueOf(priority.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(
+                    "Invalid priority: '" + priority + "'. Accepted values: HIGH, MEDIUM, LOW");
+        }
+    }
+
+    private Task.TaskStatus parseStatus(String status) {
+        try {
+            return Task.TaskStatus.valueOf(status.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(
+                    "Invalid status: '" + status + "'. Accepted values: PENDING, COMPLETED");
+        }
     }
 
     private TaskDTO convertToDTO(Task task) {

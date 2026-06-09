@@ -189,7 +189,7 @@ public class TaskController {
     @GetMapping("/statistics")
     public ResponseEntity<Map<String, Object>> getStatistics() {
         log.info("Request received to fetch task statistics");
-        Object statistics = taskService.getTaskStatistics();
+        TaskService.Statistics statistics = taskService.getTaskStatistics();
         return ResponseEntity.ok(ApiResponse.success(statistics));
     }
 }

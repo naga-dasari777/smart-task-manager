@@ -7,6 +7,7 @@
 let currentEditingTaskId = null;
 let allTasks = [];
 let filteredTasks = [];
+const _actionInProgress = new Set();
 
 /**
  * Initialize application on DOM load
@@ -172,7 +173,7 @@ async function loadStatistics() {
     document.getElementById('completedTasks').textContent = stats.completed || 0;
     document.getElementById('pendingTasks').textContent = stats.pending || 0;
     
-    const percentage = stats.getCompletionPercentage ? stats.getCompletionPercentage() : 0;
+    const percentage = stats.total > 0 ? (stats.completed * 100.0) / stats.total : 0;
     document.getElementById('completionBar').style.width = percentage + '%';
     document.getElementById('completionPercentage').textContent = percentage.toFixed(0) + '% Complete';
 }
@@ -196,22 +197,27 @@ async function openEditTaskModal(taskId) {
     currentEditingTaskId = taskId;
     const task = allTasks.find(t => t.id === taskId);
     
-    if (task) {
-        document.getElementById('taskTitle').value = task.title;
-        document.getElementById('taskDescription').value = task.description || '';
-        document.getElementById('taskPriority').value = task.priority;
-        document.getElementById('taskDueDate').value = formatDateForInput(task.dueDate);
-        
-        document.getElementById('modalTitle').textContent = 'Edit Task';
-        const modal = new bootstrap.Modal(document.getElementById('taskModal'));
-        modal.show();
+    if (!task) {
+        showToast('Task not found. Please refresh the page.', 'warning');
+        return;
     }
+    document.getElementById('taskTitle').value = task.title;
+    document.getElementById('taskDescription').value = task.description || '';
+    document.getElementById('taskPriority').value = task.priority;
+    document.getElementById('taskDueDate').value = formatDateForInput(task.dueDate);
+    
+    document.getElementById('modalTitle').textContent = 'Edit Task';
+    const modal = new bootstrap.Modal(document.getElementById('taskModal'));
+    modal.show();
 }
 
 /**
  * Handle saving task (create or update)
  */
 async function handleSaveTask() {
+    const saveBtn = document.getElementById('saveTaskBtn');
+    if (saveBtn.disabled) return;
+
     const title = document.getElementById('taskTitle').value.trim();
     const description = document.getElementById('taskDescription').value.trim();
     const priority = document.getElementById('taskPriority').value;
@@ -222,26 +228,29 @@ async function handleSaveTask() {
         document.getElementById('titleError').textContent = 'Task title is required';
         return;
     }
-    
-    const taskData = {
-        title,
-        description: description || null,
-        priority,
-        dueDate: dueDate ? new Date(dueDate).toISOString() : null
-    };
-    
-    let result;
-    if (currentEditingTaskId) {
-        // Update existing task
-        result = await updateTask(currentEditingTaskId, taskData);
-    } else {
-        // Create new task
-        result = await createTask(taskData);
-    }
-    
-    if (result) {
-        bootstrap.Modal.getInstance(document.getElementById('taskModal')).hide();
-        await refreshTasksUI();
+
+    saveBtn.disabled = true;
+    try {
+        const taskData = {
+            title,
+            description: description || null,
+            priority,
+            dueDate: dueDate ? new Date(dueDate).toISOString() : null
+        };
+        
+        let result;
+        if (currentEditingTaskId) {
+            result = await updateTask(currentEditingTaskId, taskData);
+        } else {
+            result = await createTask(taskData);
+        }
+        
+        if (result) {
+            bootstrap.Modal.getInstance(document.getElementById('taskModal')).hide();
+            await refreshTasksUI();
+        }
+    } finally {
+        saveBtn.disabled = false;
     }
 }
 
@@ -250,8 +259,15 @@ async function handleSaveTask() {
  * @param {number} taskId - Task ID to complete
  */
 async function handleCompleteTask(taskId) {
-    const result = await markTaskComplete(taskId);
-    if (result) await refreshTasksUI();
+    const key = `complete-${taskId}`;
+    if (_actionInProgress.has(key)) return;
+    _actionInProgress.add(key);
+    try {
+        const result = await markTaskComplete(taskId);
+        if (result) await refreshTasksUI();
+    } finally {
+        _actionInProgress.delete(key);
+    }
 }
 
 /**
@@ -259,14 +275,25 @@ async function handleCompleteTask(taskId) {
  * @param {number} taskId - Task ID to revert
  */
 async function handleRevertTask(taskId) {
-    const task = allTasks.find(t => t.id === taskId);
-    if (task) {
-        const taskData = {
-            ...task,
+    const key = `revert-${taskId}`;
+    if (_actionInProgress.has(key)) return;
+    _actionInProgress.add(key);
+    try {
+        const task = allTasks.find(t => t.id === taskId);
+        if (!task) {
+            showToast('Task not found. Please refresh the page.', 'warning');
+            return;
+        }
+        const result = await updateTask(taskId, {
+            title: task.title,
+            description: task.description,
+            priority: task.priority,
+            dueDate: task.dueDate,
             status: 'PENDING'
-        };
-        const result = await updateTask(taskId, taskData);
+        });
         if (result) await refreshTasksUI();
+    } finally {
+        _actionInProgress.delete(key);
     }
 }
 
@@ -285,8 +312,15 @@ function handleDeleteTask(taskId) {
  * @param {number} taskId - Task ID to delete
  */
 async function deleteTaskAndRefresh(taskId) {
-    const result = await deleteTask(taskId);
-    if (result) await refreshTasksUI();
+    const key = `delete-${taskId}`;
+    if (_actionInProgress.has(key)) return;
+    _actionInProgress.add(key);
+    try {
+        const result = await deleteTask(taskId);
+        if (result) await refreshTasksUI();
+    } finally {
+        _actionInProgress.delete(key);
+    }
 }
 
 /**

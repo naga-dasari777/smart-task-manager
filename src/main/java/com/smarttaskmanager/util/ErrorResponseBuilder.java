@@ -17,6 +17,7 @@ public final class ErrorResponseBuilder {
 
     public static Map<String, Object> build(HttpStatus status, String error, String message, WebRequest request) {
         Map<String, Object> errorResponse = new HashMap<>();
+        errorResponse.put("success", false);
         errorResponse.put("status", status.value());
         errorResponse.put("error", error);
         errorResponse.put("message", message);
