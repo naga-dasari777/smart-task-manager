@@ -163,7 +163,7 @@ async function loadStatistics() {
     document.getElementById('completedTasks').textContent = stats.completed || 0;
     document.getElementById('pendingTasks').textContent = stats.pending || 0;
     
-    const percentage = stats.getCompletionPercentage ? stats.getCompletionPercentage() : 0;
+    const percentage = stats.total > 0 ? (stats.completed * 100.0) / stats.total : 0;
     document.getElementById('completionBar').style.width = percentage + '%';
     document.getElementById('completionPercentage').textContent = percentage.toFixed(0) + '% Complete';
 }
@@ -187,16 +187,19 @@ async function openEditTaskModal(taskId) {
     currentEditingTaskId = taskId;
     const task = allTasks.find(t => t.id === taskId);
     
-    if (task) {
-        document.getElementById('taskTitle').value = task.title;
-        document.getElementById('taskDescription').value = task.description || '';
-        document.getElementById('taskPriority').value = task.priority;
-        document.getElementById('taskDueDate').value = formatDateForInput(task.dueDate);
-        
-        document.getElementById('modalTitle').textContent = 'Edit Task';
-        const modal = new bootstrap.Modal(document.getElementById('taskModal'));
-        modal.show();
+    if (!task) {
+        showToast('Task not found. Please refresh and try again.', 'danger');
+        return;
     }
+
+    document.getElementById('taskTitle').value = task.title;
+    document.getElementById('taskDescription').value = task.description || '';
+    document.getElementById('taskPriority').value = task.priority;
+    document.getElementById('taskDueDate').value = formatDateForInput(task.dueDate);
+
+    document.getElementById('modalTitle').textContent = 'Edit Task';
+    const modal = new bootstrap.Modal(document.getElementById('taskModal'));
+    modal.show();
 }
 
 /**
@@ -255,16 +258,19 @@ async function handleCompleteTask(taskId) {
  */
 async function handleRevertTask(taskId) {
     const task = allTasks.find(t => t.id === taskId);
-    if (task) {
-        const taskData = {
-            ...task,
-            status: 'PENDING'
-        };
-        const result = await updateTask(taskId, taskData);
-        if (result) {
-            await loadTasks();
-            await loadStatistics();
-        }
+    if (!task) {
+        showToast('Task not found. Please refresh and try again.', 'danger');
+        return;
+    }
+
+    const taskData = {
+        ...task,
+        status: 'PENDING'
+    };
+    const result = await updateTask(taskId, taskData);
+    if (result) {
+        await loadTasks();
+        await loadStatistics();
     }
 }
 

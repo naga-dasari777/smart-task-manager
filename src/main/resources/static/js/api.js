@@ -6,6 +6,15 @@
 
 const API_BASE_URL = '/api/tasks';
 
+async function parseErrorMessage(response, fallback) {
+    try {
+        const body = await response.json();
+        return body.message || fallback;
+    } catch {
+        return fallback;
+    }
+}
+
 /**
  * Fetch all tasks from the server
  * @returns {Promise<Array>} Array of task objects
@@ -13,7 +22,7 @@ const API_BASE_URL = '/api/tasks';
 async function fetchAllTasks() {
     try {
         const response = await fetch(`${API_BASE_URL}`);
-        if (!response.ok) throw new Error('Failed to fetch tasks');
+        if (!response.ok) throw new Error(await parseErrorMessage(response, 'Failed to fetch tasks'));
         const data = await response.json();
         return data.data || [];
     } catch (error) {
@@ -31,7 +40,7 @@ async function fetchAllTasks() {
 async function fetchTaskById(taskId) {
     try {
         const response = await fetch(`${API_BASE_URL}/${taskId}`);
-        if (!response.ok) throw new Error('Task not found');
+        if (!response.ok) throw new Error(await parseErrorMessage(response, 'Task not found'));
         const data = await response.json();
         return data.data;
     } catch (error) {
@@ -55,13 +64,13 @@ async function createTask(taskData) {
             },
             body: JSON.stringify(taskData)
         });
-        if (!response.ok) throw new Error('Failed to create task');
+        if (!response.ok) throw new Error(await parseErrorMessage(response, 'Failed to create task'));
         const data = await response.json();
         showToast(data.message || 'Task created successfully!', 'success');
         return data.data;
     } catch (error) {
         console.error('Error creating task:', error);
-        showToast('Error creating task', 'danger');
+        showToast(error.message || 'Error creating task', 'danger');
         return null;
     }
 }
@@ -81,13 +90,13 @@ async function updateTask(taskId, taskData) {
             },
             body: JSON.stringify(taskData)
         });
-        if (!response.ok) throw new Error('Failed to update task');
+        if (!response.ok) throw new Error(await parseErrorMessage(response, 'Failed to update task'));
         const data = await response.json();
         showToast(data.message || 'Task updated successfully!', 'success');
         return data.data;
     } catch (error) {
         console.error('Error updating task:', error);
-        showToast('Error updating task', 'danger');
+        showToast(error.message || 'Error updating task', 'danger');
         return null;
     }
 }
@@ -105,13 +114,13 @@ async function deleteTask(taskId) {
                 'Content-Type': 'application/json',
             }
         });
-        if (!response.ok) throw new Error('Failed to delete task');
+        if (!response.ok) throw new Error(await parseErrorMessage(response, 'Failed to delete task'));
         const data = await response.json();
         showToast(data.message || 'Task deleted successfully!', 'success');
         return true;
     } catch (error) {
         console.error('Error deleting task:', error);
-        showToast('Error deleting task', 'danger');
+        showToast(error.message || 'Error deleting task', 'danger');
         return false;
     }
 }
@@ -129,13 +138,13 @@ async function markTaskComplete(taskId) {
                 'Content-Type': 'application/json',
             }
         });
-        if (!response.ok) throw new Error('Failed to complete task');
+        if (!response.ok) throw new Error(await parseErrorMessage(response, 'Failed to complete task'));
         const data = await response.json();
         showToast(data.message || 'Task marked as completed!', 'success');
         return data.data;
     } catch (error) {
         console.error('Error completing task:', error);
-        showToast('Error completing task', 'danger');
+        showToast(error.message || 'Error completing task', 'danger');
         return null;
     }
 }
@@ -150,11 +159,12 @@ async function searchTasks(keyword) {
     
     try {
         const response = await fetch(`${API_BASE_URL}/search/query?keyword=${encodeURIComponent(keyword)}`);
-        if (!response.ok) throw new Error('Search failed');
+        if (!response.ok) throw new Error(await parseErrorMessage(response, 'Search failed'));
         const data = await response.json();
         return data.data || [];
     } catch (error) {
         console.error('Error searching tasks:', error);
+        showToast(error.message || 'Error searching tasks', 'danger');
         return [];
     }
 }
@@ -167,11 +177,12 @@ async function searchTasks(keyword) {
 async function filterByStatus(status) {
     try {
         const response = await fetch(`${API_BASE_URL}/filter/status?status=${status}`);
-        if (!response.ok) throw new Error('Filter failed');
+        if (!response.ok) throw new Error(await parseErrorMessage(response, 'Filter failed'));
         const data = await response.json();
         return data.data || [];
     } catch (error) {
         console.error('Error filtering by status:', error);
+        showToast(error.message || 'Error filtering tasks by status', 'danger');
         return [];
     }
 }
@@ -184,11 +195,12 @@ async function filterByStatus(status) {
 async function filterByPriority(priority) {
     try {
         const response = await fetch(`${API_BASE_URL}/filter/priority?priority=${priority}`);
-        if (!response.ok) throw new Error('Filter failed');
+        if (!response.ok) throw new Error(await parseErrorMessage(response, 'Filter failed'));
         const data = await response.json();
         return data.data || [];
     } catch (error) {
         console.error('Error filtering by priority:', error);
+        showToast(error.message || 'Error filtering tasks by priority', 'danger');
         return [];
     }
 }
@@ -200,11 +212,12 @@ async function filterByPriority(priority) {
 async function fetchStatistics() {
     try {
         const response = await fetch(`${API_BASE_URL}/statistics`);
-        if (!response.ok) throw new Error('Failed to fetch statistics');
+        if (!response.ok) throw new Error(await parseErrorMessage(response, 'Failed to fetch statistics'));
         const data = await response.json();
         return data.data;
     } catch (error) {
         console.error('Error fetching statistics:', error);
+        showToast(error.message || 'Error loading statistics', 'danger');
         return { total: 0, completed: 0, pending: 0 };
     }
 }

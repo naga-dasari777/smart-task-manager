@@ -84,7 +84,7 @@ public class TaskService {
         
         // Set priority with default value if not provided
         if (taskDTO.getPriority() != null) {
-            task.setPriority(Task.Priority.valueOf(taskDTO.getPriority().toUpperCase()));
+            task.setPriority(parsePriority(taskDTO.getPriority()));
         } else {
             task.setPriority(Task.Priority.MEDIUM);
         }
@@ -123,13 +123,13 @@ public class TaskService {
             task.setDescription(taskDTO.getDescription());
         }
         if (taskDTO.getPriority() != null) {
-            task.setPriority(Task.Priority.valueOf(taskDTO.getPriority().toUpperCase()));
+            task.setPriority(parsePriority(taskDTO.getPriority()));
         }
         if (taskDTO.getDueDate() != null) {
             task.setDueDate(taskDTO.getDueDate());
         }
         if (taskDTO.getStatus() != null) {
-            task.setStatus(Task.TaskStatus.valueOf(taskDTO.getStatus().toUpperCase()));
+            task.setStatus(parseStatus(taskDTO.getStatus()));
         }
         
         Task updatedTask = taskRepository.save(task);
@@ -201,7 +201,7 @@ public class TaskService {
      */
     public List<TaskDTO> getTasksByStatus(String status) {
         log.info("Filtering tasks by status: {}", status);
-        Task.TaskStatus taskStatus = Task.TaskStatus.valueOf(status.toUpperCase());
+        Task.TaskStatus taskStatus = parseStatus(status);
         return taskRepository.findByStatus(taskStatus)
                 .stream()
                 .map(this::convertToDTO)
@@ -216,7 +216,7 @@ public class TaskService {
      */
     public List<TaskDTO> getTasksByPriority(String priority) {
         log.info("Filtering tasks by priority: {}", priority);
-        Task.Priority taskPriority = Task.Priority.valueOf(priority.toUpperCase());
+        Task.Priority taskPriority = parsePriority(priority);
         return taskRepository.findByPriority(taskPriority)
                 .stream()
                 .map(this::convertToDTO)
@@ -256,6 +256,24 @@ public class TaskService {
                 .createdAt(task.getCreatedAt())
                 .updatedAt(task.getUpdatedAt())
                 .build();
+    }
+
+    private Task.Priority parsePriority(String priority) {
+        try {
+            return Task.Priority.valueOf(priority.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(
+                    "Invalid priority: '" + priority + "'. Accepted values: HIGH, MEDIUM, LOW");
+        }
+    }
+
+    private Task.TaskStatus parseStatus(String status) {
+        try {
+            return Task.TaskStatus.valueOf(status.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(
+                    "Invalid status: '" + status + "'. Accepted values: PENDING, COMPLETED");
+        }
     }
 
     /**
