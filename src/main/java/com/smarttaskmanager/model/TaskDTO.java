@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.Size;
 import java.time.LocalDateTime;
 
 /**
@@ -29,11 +30,13 @@ public class TaskDTO {
      * Task title - Required for creation/update
      */
     @NotBlank(message = "Task title cannot be blank")
+    @Size(max = 255, message = "Title must not exceed 255 characters")
     private String title;
 
     /**
      * Task description - Optional
      */
+    @Size(max = 10000, message = "Description must not exceed 10000 characters")
     private String description;
 
     /**

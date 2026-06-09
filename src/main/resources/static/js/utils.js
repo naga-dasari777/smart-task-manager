@@ -12,26 +12,29 @@
 function showToast(message, type = 'info', duration = 3000) {
     const toastContainer = document.getElementById('toastContainer');
     const toastId = `toast-${Date.now()}`;
-    
-    const toastHTML = `
-        <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="toast-header bg-${type} text-white border-0">
-                <i class="fas fa-${getToastIcon(type)} me-2"></i>
-                <strong class="me-auto">${getToastTitle(type)}</strong>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
-            </div>
-            <div class="toast-body">
-                ${message}
-            </div>
-        </div>
-    `;
-    
-    toastContainer.insertAdjacentHTML('beforeend', toastHTML);
-    const toastElement = document.getElementById(toastId);
+
+    const toastElement = document.createElement('div');
+    toastElement.id = toastId;
+    toastElement.className = 'toast';
+    toastElement.setAttribute('role', 'alert');
+    toastElement.setAttribute('aria-live', 'assertive');
+    toastElement.setAttribute('aria-atomic', 'true');
+
+    const header = document.createElement('div');
+    header.className = `toast-header bg-${type} text-white border-0`;
+    header.innerHTML = `<i class="fas fa-${getToastIcon(type)} me-2"></i><strong class="me-auto">${getToastTitle(type)}</strong><button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>`;
+
+    const body = document.createElement('div');
+    body.className = 'toast-body';
+    body.textContent = message;
+
+    toastElement.appendChild(header);
+    toastElement.appendChild(body);
+    toastContainer.appendChild(toastElement);
+
     const toast = new bootstrap.Toast(toastElement);
     toast.show();
-    
-    // Auto remove toast element after it hides
+
     toastElement.addEventListener('hidden.bs.toast', () => {
         toastElement.remove();
     });
