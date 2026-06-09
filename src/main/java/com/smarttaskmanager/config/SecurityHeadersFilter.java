@@ -25,7 +25,8 @@ public class SecurityHeadersFilter implements Filter {
         httpResponse.setHeader("X-Frame-Options", "DENY");
         httpResponse.setHeader("X-XSS-Protection", "1; mode=block");
         httpResponse.setHeader("Cache-Control", "no-store");
-        // httpResponse.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com;");
+// Temporarily disabled because it blocks Bootstrap resources and inline handlers
+// httpResponse.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com;");
         httpResponse.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
 
         chain.doFilter(request, response);
