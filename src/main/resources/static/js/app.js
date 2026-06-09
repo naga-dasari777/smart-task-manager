@@ -7,6 +7,7 @@
 let currentEditingTaskId = null;
 let allTasks = [];
 let filteredTasks = [];
+const _actionInProgress = new Set();
 
 /**
  * Initialize application on DOM load
@@ -56,6 +57,15 @@ function setupEventListeners() {
         toggleDarkMode();
         updateDarkModeIcon();
     });
+}
+
+/**
+ * Reload tasks and statistics, then re-render.
+ * Call this after any task mutation (create/update/delete/complete).
+ */
+async function refreshTasksUI() {
+    await loadTasks();
+    await loadStatistics();
 }
 
 /**
@@ -163,7 +173,7 @@ async function loadStatistics() {
     document.getElementById('completedTasks').textContent = stats.completed || 0;
     document.getElementById('pendingTasks').textContent = stats.pending || 0;
     
-    const percentage = stats.getCompletionPercentage ? stats.getCompletionPercentage() : 0;
+    const percentage = stats.total > 0 ? (stats.completed * 100.0) / stats.total : 0;
     document.getElementById('completionBar').style.width = percentage + '%';
     document.getElementById('completionPercentage').textContent = percentage.toFixed(0) + '% Complete';
 }
@@ -187,22 +197,27 @@ async function openEditTaskModal(taskId) {
     currentEditingTaskId = taskId;
     const task = allTasks.find(t => t.id === taskId);
     
-    if (task) {
-        document.getElementById('taskTitle').value = task.title;
-        document.getElementById('taskDescription').value = task.description || '';
-        document.getElementById('taskPriority').value = task.priority;
-        document.getElementById('taskDueDate').value = formatDateForInput(task.dueDate);
-        
-        document.getElementById('modalTitle').textContent = 'Edit Task';
-        const modal = new bootstrap.Modal(document.getElementById('taskModal'));
-        modal.show();
+    if (!task) {
+        showToast('Task not found. Please refresh the page.', 'warning');
+        return;
     }
+    document.getElementById('taskTitle').value = task.title;
+    document.getElementById('taskDescription').value = task.description || '';
+    document.getElementById('taskPriority').value = task.priority;
+    document.getElementById('taskDueDate').value = formatDateForInput(task.dueDate);
+    
+    document.getElementById('modalTitle').textContent = 'Edit Task';
+    const modal = new bootstrap.Modal(document.getElementById('taskModal'));
+    modal.show();
 }
 
 /**
  * Handle saving task (create or update)
  */
 async function handleSaveTask() {
+    const saveBtn = document.getElementById('saveTaskBtn');
+    if (saveBtn.disabled) return;
+
     const title = document.getElementById('taskTitle').value.trim();
     const description = document.getElementById('taskDescription').value.trim();
     const priority = document.getElementById('taskPriority').value;
@@ -213,27 +228,29 @@ async function handleSaveTask() {
         document.getElementById('titleError').textContent = 'Task title is required';
         return;
     }
-    
-    const taskData = {
-        title,
-        description: description || null,
-        priority,
-        dueDate: dueDate ? new Date(dueDate).toISOString() : null
-    };
-    
-    let result;
-    if (currentEditingTaskId) {
-        // Update existing task
-        result = await updateTask(currentEditingTaskId, taskData);
-    } else {
-        // Create new task
-        result = await createTask(taskData);
-    }
-    
-    if (result) {
-        bootstrap.Modal.getInstance(document.getElementById('taskModal')).hide();
-        await loadTasks();
-        await loadStatistics();
+
+    saveBtn.disabled = true;
+    try {
+        const taskData = {
+            title,
+            description: description || null,
+            priority,
+            dueDate: dueDate ? new Date(dueDate).toISOString() : null
+        };
+        
+        let result;
+        if (currentEditingTaskId) {
+            result = await updateTask(currentEditingTaskId, taskData);
+        } else {
+            result = await createTask(taskData);
+        }
+        
+        if (result) {
+            bootstrap.Modal.getInstance(document.getElementById('taskModal')).hide();
+            await refreshTasksUI();
+        }
+    } finally {
+        saveBtn.disabled = false;
     }
 }
 
@@ -242,10 +259,14 @@ async function handleSaveTask() {
  * @param {number} taskId - Task ID to complete
  */
 async function handleCompleteTask(taskId) {
-    const result = await markTaskComplete(taskId);
-    if (result) {
-        await loadTasks();
-        await loadStatistics();
+    const key = `complete-${taskId}`;
+    if (_actionInProgress.has(key)) return;
+    _actionInProgress.add(key);
+    try {
+        const result = await markTaskComplete(taskId);
+        if (result) await refreshTasksUI();
+    } finally {
+        _actionInProgress.delete(key);
     }
 }
 
@@ -254,17 +275,25 @@ async function handleCompleteTask(taskId) {
  * @param {number} taskId - Task ID to revert
  */
 async function handleRevertTask(taskId) {
-    const task = allTasks.find(t => t.id === taskId);
-    if (task) {
-        const taskData = {
-            ...task,
-            status: 'PENDING'
-        };
-        const result = await updateTask(taskId, taskData);
-        if (result) {
-            await loadTasks();
-            await loadStatistics();
+    const key = `revert-${taskId}`;
+    if (_actionInProgress.has(key)) return;
+    _actionInProgress.add(key);
+    try {
+        const task = allTasks.find(t => t.id === taskId);
+        if (!task) {
+            showToast('Task not found. Please refresh the page.', 'warning');
+            return;
         }
+        const result = await updateTask(taskId, {
+            title: task.title,
+            description: task.description,
+            priority: task.priority,
+            dueDate: task.dueDate,
+            status: 'PENDING'
+        });
+        if (result) await refreshTasksUI();
+    } finally {
+        _actionInProgress.delete(key);
     }
 }
 
@@ -283,10 +312,14 @@ function handleDeleteTask(taskId) {
  * @param {number} taskId - Task ID to delete
  */
 async function deleteTaskAndRefresh(taskId) {
-    const result = await deleteTask(taskId);
-    if (result) {
-        await loadTasks();
-        await loadStatistics();
+    const key = `delete-${taskId}`;
+    if (_actionInProgress.has(key)) return;
+    _actionInProgress.add(key);
+    try {
+        const result = await deleteTask(taskId);
+        if (result) await refreshTasksUI();
+    } finally {
+        _actionInProgress.delete(key);
     }
 }
 
@@ -320,33 +353,29 @@ function clearSearch() {
 }
 
 /**
+ * Generic filter handler — filters allTasks by a given property and value.
+ * @param {string} property - Task property to filter on (e.g. 'status', 'priority')
+ * @param {string} value - Value to match, or 'all' to show everything
+ */
+function applyFilter(property, value) {
+    filteredTasks = value === 'all'
+        ? [...allTasks]
+        : allTasks.filter(task => task[property] === value);
+    renderTasks(filteredTasks);
+}
+
+/**
  * Handle status filter change
  */
 async function handleStatusFilter(event) {
-    const status = event.target.value;
-    
-    if (status === 'all') {
-        filteredTasks = [...allTasks];
-    } else {
-        filteredTasks = allTasks.filter(task => task.status === status);
-    }
-    
-    renderTasks(filteredTasks);
+    applyFilter('status', event.target.value);
 }
 
 /**
  * Handle priority filter change
  */
 async function handlePriorityFilter(event) {
-    const priority = event.target.value;
-    
-    if (priority === 'all') {
-        filteredTasks = [...allTasks];
-    } else {
-        filteredTasks = allTasks.filter(task => task.priority === priority);
-    }
-    
-    renderTasks(filteredTasks);
+    applyFilter('priority', event.target.value);
 }
 
 /**
@@ -359,31 +388,4 @@ function resetTaskForm() {
     document.getElementById('taskPriority').value = 'MEDIUM';
 }
 
-/**
- * Escape HTML special characters to prevent XSS
- * @param {string} text - Text to escape
- * @returns {string} Escaped text
- */
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
 
-/**
- * Debounce function to limit function calls
- * @param {Function} func - Function to debounce
- * @param {number} wait - Wait time in milliseconds
- * @returns {Function} Debounced function
- */
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
