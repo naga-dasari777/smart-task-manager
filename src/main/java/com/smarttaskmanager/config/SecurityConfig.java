@@ -7,7 +7,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
  * Security configuration for the application.
- * Restricts CORS to configured origins (defaults to localhost:8080).
+ * Configures CORS to allow frontend requests to backend API endpoints.
+ * Default allowed origin is localhost:8080 (can be overridden via ALLOWED_ORIGINS env var)
  */
 @Configuration
 public class SecurityConfig implements WebMvcConfigurer {
@@ -17,10 +18,12 @@ public class SecurityConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/tasks/**")
+        // Configure CORS for the entire /api/** path
+        // This includes all API endpoints: /api/tasks, /api/tasks/**, etc.
+        registry.addMapping("/api/**")
                 .allowedOrigins(allowedOrigins.split(","))
-                .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE")
-                .allowedHeaders("Content-Type", "Authorization")
+                .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+                .allowedHeaders("*")
                 .allowCredentials(true)
                 .maxAge(3600);
     }
