@@ -2,15 +2,18 @@
  * API Service Module
  * Handles all HTTP requests to the backend
  * Provides a clean abstraction layer for API calls
+ * 
+ * API Endpoint: http://localhost:8080/api/tasks
+ * All requests are made to the absolute backend URL
  */
 
-const API_BASE_URL = '/api/tasks';
+const API_BASE_URL = 'http://localhost:8080/api/tasks';
 
 /**
  * Generic API request handler.
  * Centralizes fetch, error handling, and optional toast notifications.
  *
- * @param {string} url - Request URL
+ * @param {string} url - Request URL (absolute)
  * @param {Object} [options] - fetch options (method, headers, body)
  * @param {Object} [config] - Extra behaviour config
  * @param {string} [config.errorContext] - Human-readable context for console.error
@@ -21,14 +24,21 @@ const API_BASE_URL = '/api/tasks';
 async function apiRequest(url, options = {}, config = {}) {
     const { errorContext = 'API request', errorToast, fallback = null } = config;
     try {
-        const response = await fetch(url, options);
+        console.log(`API Request: ${options.method || 'GET'} ${url}`);
+        const response = await fetch(url, {
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
         if (!response.ok) {
             let serverMessage;
             try {
                 const body = await response.json();
                 serverMessage = body.message;
             } catch (_) { /* response not JSON */ }
-            throw new Error(serverMessage || `${errorContext} failed`);
+            throw new Error(serverMessage || `${errorContext} failed (HTTP ${response.status})`);
         }
         return await response.json();
     } catch (error) {
