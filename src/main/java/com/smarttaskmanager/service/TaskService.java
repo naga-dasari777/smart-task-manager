@@ -84,7 +84,11 @@ public class TaskService {
         
         // Set priority with default value if not provided
         if (taskDTO.getPriority() != null) {
-            task.setPriority(Task.Priority.valueOf(taskDTO.getPriority().toUpperCase()));
+            try {
+                task.setPriority(Task.Priority.valueOf(taskDTO.getPriority().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid priority value: " + taskDTO.getPriority() + ". Allowed values: HIGH, MEDIUM, LOW");
+            }
         } else {
             task.setPriority(Task.Priority.MEDIUM);
         }
@@ -123,13 +127,21 @@ public class TaskService {
             task.setDescription(taskDTO.getDescription());
         }
         if (taskDTO.getPriority() != null) {
-            task.setPriority(Task.Priority.valueOf(taskDTO.getPriority().toUpperCase()));
+            try {
+                task.setPriority(Task.Priority.valueOf(taskDTO.getPriority().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid priority value: " + taskDTO.getPriority() + ". Allowed values: HIGH, MEDIUM, LOW");
+            }
         }
         if (taskDTO.getDueDate() != null) {
             task.setDueDate(taskDTO.getDueDate());
         }
         if (taskDTO.getStatus() != null) {
-            task.setStatus(Task.TaskStatus.valueOf(taskDTO.getStatus().toUpperCase()));
+            try {
+                task.setStatus(Task.TaskStatus.valueOf(taskDTO.getStatus().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid status value: " + taskDTO.getStatus() + ". Allowed values: PENDING, COMPLETED");
+            }
         }
         
         Task updatedTask = taskRepository.save(task);
@@ -201,7 +213,12 @@ public class TaskService {
      */
     public List<TaskDTO> getTasksByStatus(String status) {
         log.info("Filtering tasks by status: {}", status);
-        Task.TaskStatus taskStatus = Task.TaskStatus.valueOf(status.toUpperCase());
+        Task.TaskStatus taskStatus;
+        try {
+            taskStatus = Task.TaskStatus.valueOf(status.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid status value: " + status + ". Allowed values: PENDING, COMPLETED");
+        }
         return taskRepository.findByStatus(taskStatus)
                 .stream()
                 .map(this::convertToDTO)
@@ -216,7 +233,12 @@ public class TaskService {
      */
     public List<TaskDTO> getTasksByPriority(String priority) {
         log.info("Filtering tasks by priority: {}", priority);
-        Task.Priority taskPriority = Task.Priority.valueOf(priority.toUpperCase());
+        Task.Priority taskPriority;
+        try {
+            taskPriority = Task.Priority.valueOf(priority.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid priority value: " + priority + ". Allowed values: HIGH, MEDIUM, LOW");
+        }
         return taskRepository.findByPriority(taskPriority)
                 .stream()
                 .map(this::convertToDTO)

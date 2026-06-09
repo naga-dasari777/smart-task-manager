@@ -83,6 +83,27 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Handle IllegalArgumentException (invalid enum values, bad input)
+     * Returns 400 Bad Request status
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalArgumentException(
+            IllegalArgumentException ex,
+            WebRequest request) {
+
+        log.warn("Invalid argument: {}", ex.getMessage());
+
+        Map<String, Object> errorResponse = new HashMap<>();
+        errorResponse.put("status", HttpStatus.BAD_REQUEST.value());
+        errorResponse.put("error", "Bad Request");
+        errorResponse.put("message", ex.getMessage());
+        errorResponse.put("timestamp", LocalDateTime.now());
+        errorResponse.put("path", request.getDescription(false).replace("uri=", ""));
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    /**
      * Handle generic exceptions
      * Fallback handler for unexpected errors
      * Returns 500 Internal Server Error status
