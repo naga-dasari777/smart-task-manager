@@ -1,0 +1,105 @@
+/**
+ * Dark Mode Stylesheet
+ * Enhances Bootstrap 5 dark mode support
+ */
+
+/* Light Mode (Default) */
+:root {
+    color-scheme: light;
+}
+
+/* Dark Mode */
+body[data-bs-theme='dark'] {
+    color-scheme: dark;
+    background-color: #1a1a1a;
+    color: #e0e0e0;
+}
+
+body[data-bs-theme='dark'] .navbar {
+    background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%) !important;
+    border-bottom: 1px solid #444;
+}
+
+body[data-bs-theme='dark'] .btn-outline-light {
+    color: #e0e0e0;
+    border-color: #555;
+}
+
+body[data-bs-theme='dark'] .btn-outline-light:hover {
+    background-color: #444;
+    border-color: #666;
+}
+
+body[data-bs-theme='dark'] h1,
+body[data-bs-theme='dark'] h2,
+body[data-bs-theme='dark'] h3,
+body[data-bs-theme='dark'] h4,
+body[data-bs-theme='dark'] h5,
+body[data-bs-theme='dark'] h6 {
+    color: #e0e0e0;
+}
+
+body[data-bs-theme='dark'] .text-muted {
+    color: #a0a0a0 !important;
+}
+
+body[data-bs-theme='dark'] .border {
+    border-color: #444 !important;
+}
+
+body[data-bs-theme='dark'] .bg-light {
+    background-color: #2d2d2d !important;
+}
+
+body[data-bs-theme='dark'] .btn-group .btn {
+    border-color: #555;
+}
+
+body[data-bs-theme='dark'] .btn-group .btn-outline-secondary {
+    color: #e0e0e0;
+    border-color: #555;
+}
+
+body[data-bs-theme='dark'] .btn-group .btn-outline-secondary:hover {
+    background-color: #444;
+    border-color: #666;
+    color: #e0e0e0;
+}
+
+body[data-bs-theme='dark'] .btn-group .btn-check:checked + .btn-outline-secondary {
+    background-color: #667eea;
+    border-color: #667eea;
+    color: white;
+}
+
+body[data-bs-theme='dark'] .input-group-text {
+    background-color: #3d3d3d;
+    border-color: #555;
+    color: #e0e0e0;
+}
+
+body[data-bs-theme='dark'] .form-control::placeholder {
+    color: #888;
+}
+
+body[data-bs-theme='dark'] .btn-check:checked + .btn-outline-secondary,
+body[data-bs-theme='dark'] .btn-check:checked + label {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-color: #667eea;
+    color: white;
+}
+
+body[data-bs-theme='dark'] .badge {
+    filter: brightness(1.1);
+}
+
+/* Smooth transition for theme toggle */
+body {
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+body[data-bs-theme='dark'] .card,
+body[data-bs-theme='dark'] .modal-content,
+body[data-bs-theme='dark'] .toast {
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
