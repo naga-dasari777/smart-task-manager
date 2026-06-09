@@ -2,6 +2,7 @@ package com.smarttaskmanager.controller;
 
 import com.smarttaskmanager.model.TaskDTO;
 import com.smarttaskmanager.service.TaskService;
+import com.smarttaskmanager.util.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -10,7 +11,6 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -53,13 +53,7 @@ public class TaskController {
     public ResponseEntity<Map<String, Object>> getAllTasks() {
         log.info("Request received to fetch all tasks");
         List<TaskDTO> tasks = taskService.getAllTasks();
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("success", true);
-        response.put("data", tasks);
-        response.put("total", tasks.size());
-        
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.successList(tasks));
     }
 
     /**
@@ -74,12 +68,7 @@ public class TaskController {
     public ResponseEntity<Map<String, Object>> getTaskById(@PathVariable Long id) {
         log.info("Request received to fetch task with id: {}", id);
         TaskDTO task = taskService.getTaskById(id);
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("success", true);
-        response.put("data", task);
-        
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(task));
     }
 
     /**
@@ -94,13 +83,7 @@ public class TaskController {
     public ResponseEntity<Map<String, Object>> createTask(@Valid @RequestBody TaskDTO taskDTO) {
         log.info("Request received to create task with title: {}", taskDTO.getTitle());
         TaskDTO createdTask = taskService.createTask(taskDTO);
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("success", true);
-        response.put("message", "Task created successfully");
-        response.put("data", createdTask);
-        
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(createdTask, "Task created successfully"));
     }
 
     /**
@@ -118,13 +101,7 @@ public class TaskController {
             @Valid @RequestBody TaskDTO taskDTO) {
         log.info("Request received to update task with id: {}", id);
         TaskDTO updatedTask = taskService.updateTask(id, taskDTO);
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("success", true);
-        response.put("message", "Task updated successfully");
-        response.put("data", updatedTask);
-        
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(updatedTask, "Task updated successfully"));
     }
 
     /**
@@ -139,12 +116,7 @@ public class TaskController {
     public ResponseEntity<Map<String, Object>> deleteTask(@PathVariable Long id) {
         log.info("Request received to delete task with id: {}", id);
         taskService.deleteTask(id);
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("success", true);
-        response.put("message", "Task deleted successfully");
-        
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.successMessage("Task deleted successfully"));
     }
 
     /**
@@ -159,13 +131,7 @@ public class TaskController {
     public ResponseEntity<Map<String, Object>> markTaskAsComplete(@PathVariable Long id) {
         log.info("Request received to mark task as complete with id: {}", id);
         TaskDTO completedTask = taskService.markTaskAsComplete(id);
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("success", true);
-        response.put("message", "Task marked as completed");
-        response.put("data", completedTask);
-        
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(completedTask, "Task marked as completed"));
     }
 
     /**
@@ -180,13 +146,7 @@ public class TaskController {
     public ResponseEntity<Map<String, Object>> searchTasks(@RequestParam String keyword) {
         log.info("Request received to search tasks with keyword: {}", keyword);
         List<TaskDTO> tasks = taskService.searchTasks(keyword);
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("success", true);
-        response.put("data", tasks);
-        response.put("total", tasks.size());
-        
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.successList(tasks));
     }
 
     /**
@@ -201,13 +161,7 @@ public class TaskController {
     public ResponseEntity<Map<String, Object>> filterByStatus(@RequestParam String status) {
         log.info("Request received to filter tasks by status: {}", status);
         List<TaskDTO> tasks = taskService.getTasksByStatus(status);
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("success", true);
-        response.put("data", tasks);
-        response.put("total", tasks.size());
-        
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.successList(tasks));
     }
 
     /**
@@ -222,13 +176,7 @@ public class TaskController {
     public ResponseEntity<Map<String, Object>> filterByPriority(@RequestParam String priority) {
         log.info("Request received to filter tasks by priority: {}", priority);
         List<TaskDTO> tasks = taskService.getTasksByPriority(priority);
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("success", true);
-        response.put("data", tasks);
-        response.put("total", tasks.size());
-        
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.successList(tasks));
     }
 
     /**
@@ -242,11 +190,6 @@ public class TaskController {
     public ResponseEntity<Map<String, Object>> getStatistics() {
         log.info("Request received to fetch task statistics");
         Object statistics = taskService.getTaskStatistics();
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("success", true);
-        response.put("data", statistics);
-        
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(statistics));
     }
 }

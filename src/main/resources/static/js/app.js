@@ -59,6 +59,15 @@ function setupEventListeners() {
 }
 
 /**
+ * Reload tasks and statistics, then re-render.
+ * Call this after any task mutation (create/update/delete/complete).
+ */
+async function refreshTasksUI() {
+    await loadTasks();
+    await loadStatistics();
+}
+
+/**
  * Load all tasks from server and render them
  */
 async function loadTasks() {
@@ -163,7 +172,7 @@ async function loadStatistics() {
     document.getElementById('completedTasks').textContent = stats.completed || 0;
     document.getElementById('pendingTasks').textContent = stats.pending || 0;
     
-    const percentage = stats.total > 0 ? (stats.completed * 100.0) / stats.total : 0;
+    const percentage = stats.getCompletionPercentage ? stats.getCompletionPercentage() : 0;
     document.getElementById('completionBar').style.width = percentage + '%';
     document.getElementById('completionPercentage').textContent = percentage.toFixed(0) + '% Complete';
 }
@@ -187,19 +196,16 @@ async function openEditTaskModal(taskId) {
     currentEditingTaskId = taskId;
     const task = allTasks.find(t => t.id === taskId);
     
-    if (!task) {
-        showToast('Task not found. Please refresh and try again.', 'danger');
-        return;
+    if (task) {
+        document.getElementById('taskTitle').value = task.title;
+        document.getElementById('taskDescription').value = task.description || '';
+        document.getElementById('taskPriority').value = task.priority;
+        document.getElementById('taskDueDate').value = formatDateForInput(task.dueDate);
+        
+        document.getElementById('modalTitle').textContent = 'Edit Task';
+        const modal = new bootstrap.Modal(document.getElementById('taskModal'));
+        modal.show();
     }
-
-    document.getElementById('taskTitle').value = task.title;
-    document.getElementById('taskDescription').value = task.description || '';
-    document.getElementById('taskPriority').value = task.priority;
-    document.getElementById('taskDueDate').value = formatDateForInput(task.dueDate);
-
-    document.getElementById('modalTitle').textContent = 'Edit Task';
-    const modal = new bootstrap.Modal(document.getElementById('taskModal'));
-    modal.show();
 }
 
 /**
@@ -235,8 +241,7 @@ async function handleSaveTask() {
     
     if (result) {
         bootstrap.Modal.getInstance(document.getElementById('taskModal')).hide();
-        await loadTasks();
-        await loadStatistics();
+        await refreshTasksUI();
     }
 }
 
@@ -246,10 +251,7 @@ async function handleSaveTask() {
  */
 async function handleCompleteTask(taskId) {
     const result = await markTaskComplete(taskId);
-    if (result) {
-        await loadTasks();
-        await loadStatistics();
-    }
+    if (result) await refreshTasksUI();
 }
 
 /**
@@ -258,19 +260,13 @@ async function handleCompleteTask(taskId) {
  */
 async function handleRevertTask(taskId) {
     const task = allTasks.find(t => t.id === taskId);
-    if (!task) {
-        showToast('Task not found. Please refresh and try again.', 'danger');
-        return;
-    }
-
-    const taskData = {
-        ...task,
-        status: 'PENDING'
-    };
-    const result = await updateTask(taskId, taskData);
-    if (result) {
-        await loadTasks();
-        await loadStatistics();
+    if (task) {
+        const taskData = {
+            ...task,
+            status: 'PENDING'
+        };
+        const result = await updateTask(taskId, taskData);
+        if (result) await refreshTasksUI();
     }
 }
 
@@ -290,10 +286,7 @@ function handleDeleteTask(taskId) {
  */
 async function deleteTaskAndRefresh(taskId) {
     const result = await deleteTask(taskId);
-    if (result) {
-        await loadTasks();
-        await loadStatistics();
-    }
+    if (result) await refreshTasksUI();
 }
 
 /**
@@ -326,33 +319,29 @@ function clearSearch() {
 }
 
 /**
+ * Generic filter handler — filters allTasks by a given property and value.
+ * @param {string} property - Task property to filter on (e.g. 'status', 'priority')
+ * @param {string} value - Value to match, or 'all' to show everything
+ */
+function applyFilter(property, value) {
+    filteredTasks = value === 'all'
+        ? [...allTasks]
+        : allTasks.filter(task => task[property] === value);
+    renderTasks(filteredTasks);
+}
+
+/**
  * Handle status filter change
  */
 async function handleStatusFilter(event) {
-    const status = event.target.value;
-    
-    if (status === 'all') {
-        filteredTasks = [...allTasks];
-    } else {
-        filteredTasks = allTasks.filter(task => task.status === status);
-    }
-    
-    renderTasks(filteredTasks);
+    applyFilter('status', event.target.value);
 }
 
 /**
  * Handle priority filter change
  */
 async function handlePriorityFilter(event) {
-    const priority = event.target.value;
-    
-    if (priority === 'all') {
-        filteredTasks = [...allTasks];
-    } else {
-        filteredTasks = allTasks.filter(task => task.priority === priority);
-    }
-    
-    renderTasks(filteredTasks);
+    applyFilter('priority', event.target.value);
 }
 
 /**
@@ -365,31 +354,4 @@ function resetTaskForm() {
     document.getElementById('taskPriority').value = 'MEDIUM';
 }
 
-/**
- * Escape HTML special characters to prevent XSS
- * @param {string} text - Text to escape
- * @returns {string} Escaped text
- */
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
 
-/**
- * Debounce function to limit function calls
- * @param {Function} func - Function to debounce
- * @param {number} wait - Wait time in milliseconds
- * @returns {Function} Debounced function
- */
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}

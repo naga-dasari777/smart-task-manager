@@ -6,11 +6,27 @@
 
 const API_BASE_URL = '/api/tasks';
 
-async function parseErrorMessage(response, fallback) {
+/**
+ * Generic API request handler.
+ * Centralizes fetch, error handling, and optional toast notifications.
+ *
+ * @param {string} url - Request URL
+ * @param {Object} [options] - fetch options (method, headers, body)
+ * @param {Object} [config] - Extra behaviour config
+ * @param {string} [config.errorContext] - Human-readable context for console.error
+ * @param {string} [config.errorToast] - Toast message shown on failure (omit to suppress)
+ * @param {*} [config.fallback] - Value returned on failure (default: null)
+ * @returns {Promise<Object>} Parsed JSON response body
+ */
+async function apiRequest(url, options = {}, config = {}) {
+    const { errorContext = 'API request', errorToast, fallback = null } = config;
     try {
-        const body = await response.json();
-        return body.message || fallback;
-    } catch {
+        const response = await fetch(url, options);
+        if (!response.ok) throw new Error(`${errorContext} failed`);
+        return await response.json();
+    } catch (error) {
+        console.error(`Error: ${errorContext}:`, error);
+        if (errorToast) showToast(errorToast, 'danger');
         return fallback;
     }
 }
@@ -20,16 +36,12 @@ async function parseErrorMessage(response, fallback) {
  * @returns {Promise<Array>} Array of task objects
  */
 async function fetchAllTasks() {
-    try {
-        const response = await fetch(`${API_BASE_URL}`);
-        if (!response.ok) throw new Error(await parseErrorMessage(response, 'Failed to fetch tasks'));
-        const data = await response.json();
-        return data.data || [];
-    } catch (error) {
-        console.error('Error fetching tasks:', error);
-        showToast('Error loading tasks', 'danger');
-        return [];
-    }
+    const data = await apiRequest(`${API_BASE_URL}`, {}, {
+        errorContext: 'fetching tasks',
+        errorToast: 'Error loading tasks',
+        fallback: { data: [] }
+    });
+    return data.data || [];
 }
 
 /**
@@ -38,16 +50,11 @@ async function fetchAllTasks() {
  * @returns {Promise<Object>} Task object
  */
 async function fetchTaskById(taskId) {
-    try {
-        const response = await fetch(`${API_BASE_URL}/${taskId}`);
-        if (!response.ok) throw new Error(await parseErrorMessage(response, 'Task not found'));
-        const data = await response.json();
-        return data.data;
-    } catch (error) {
-        console.error('Error fetching task:', error);
-        showToast('Error loading task', 'danger');
-        return null;
-    }
+    const data = await apiRequest(`${API_BASE_URL}/${taskId}`, {}, {
+        errorContext: 'fetching task',
+        errorToast: 'Error loading task'
+    });
+    return data ? data.data : null;
 }
 
 /**
@@ -56,23 +63,16 @@ async function fetchTaskById(taskId) {
  * @returns {Promise<Object>} Created task object
  */
 async function createTask(taskData) {
-    try {
-        const response = await fetch(`${API_BASE_URL}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(taskData)
-        });
-        if (!response.ok) throw new Error(await parseErrorMessage(response, 'Failed to create task'));
-        const data = await response.json();
-        showToast(data.message || 'Task created successfully!', 'success');
-        return data.data;
-    } catch (error) {
-        console.error('Error creating task:', error);
-        showToast(error.message || 'Error creating task', 'danger');
-        return null;
-    }
+    const data = await apiRequest(`${API_BASE_URL}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(taskData)
+    }, {
+        errorContext: 'creating task',
+        errorToast: 'Error creating task'
+    });
+    if (data) showToast(data.message || 'Task created successfully!', 'success');
+    return data ? data.data : null;
 }
 
 /**
@@ -82,23 +82,16 @@ async function createTask(taskData) {
  * @returns {Promise<Object>} Updated task object
  */
 async function updateTask(taskId, taskData) {
-    try {
-        const response = await fetch(`${API_BASE_URL}/${taskId}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(taskData)
-        });
-        if (!response.ok) throw new Error(await parseErrorMessage(response, 'Failed to update task'));
-        const data = await response.json();
-        showToast(data.message || 'Task updated successfully!', 'success');
-        return data.data;
-    } catch (error) {
-        console.error('Error updating task:', error);
-        showToast(error.message || 'Error updating task', 'danger');
-        return null;
-    }
+    const data = await apiRequest(`${API_BASE_URL}/${taskId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(taskData)
+    }, {
+        errorContext: 'updating task',
+        errorToast: 'Error updating task'
+    });
+    if (data) showToast(data.message || 'Task updated successfully!', 'success');
+    return data ? data.data : null;
 }
 
 /**
@@ -107,22 +100,15 @@ async function updateTask(taskId, taskData) {
  * @returns {Promise<boolean>} Success status
  */
 async function deleteTask(taskId) {
-    try {
-        const response = await fetch(`${API_BASE_URL}/${taskId}`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        });
-        if (!response.ok) throw new Error(await parseErrorMessage(response, 'Failed to delete task'));
-        const data = await response.json();
-        showToast(data.message || 'Task deleted successfully!', 'success');
-        return true;
-    } catch (error) {
-        console.error('Error deleting task:', error);
-        showToast(error.message || 'Error deleting task', 'danger');
-        return false;
-    }
+    const data = await apiRequest(`${API_BASE_URL}/${taskId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+    }, {
+        errorContext: 'deleting task',
+        errorToast: 'Error deleting task'
+    });
+    if (data) showToast(data.message || 'Task deleted successfully!', 'success');
+    return !!data;
 }
 
 /**
@@ -131,22 +117,15 @@ async function deleteTask(taskId) {
  * @returns {Promise<Object>} Updated task object
  */
 async function markTaskComplete(taskId) {
-    try {
-        const response = await fetch(`${API_BASE_URL}/${taskId}/complete`, {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        });
-        if (!response.ok) throw new Error(await parseErrorMessage(response, 'Failed to complete task'));
-        const data = await response.json();
-        showToast(data.message || 'Task marked as completed!', 'success');
-        return data.data;
-    } catch (error) {
-        console.error('Error completing task:', error);
-        showToast(error.message || 'Error completing task', 'danger');
-        return null;
-    }
+    const data = await apiRequest(`${API_BASE_URL}/${taskId}/complete`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' }
+    }, {
+        errorContext: 'completing task',
+        errorToast: 'Error completing task'
+    });
+    if (data) showToast(data.message || 'Task marked as completed!', 'success');
+    return data ? data.data : null;
 }
 
 /**
@@ -156,17 +135,12 @@ async function markTaskComplete(taskId) {
  */
 async function searchTasks(keyword) {
     if (!keyword.trim()) return fetchAllTasks();
-    
-    try {
-        const response = await fetch(`${API_BASE_URL}/search/query?keyword=${encodeURIComponent(keyword)}`);
-        if (!response.ok) throw new Error(await parseErrorMessage(response, 'Search failed'));
-        const data = await response.json();
-        return data.data || [];
-    } catch (error) {
-        console.error('Error searching tasks:', error);
-        showToast(error.message || 'Error searching tasks', 'danger');
-        return [];
-    }
+    const data = await apiRequest(
+        `${API_BASE_URL}/search/query?keyword=${encodeURIComponent(keyword)}`,
+        {},
+        { errorContext: 'searching tasks', fallback: { data: [] } }
+    );
+    return data.data || [];
 }
 
 /**
@@ -175,16 +149,12 @@ async function searchTasks(keyword) {
  * @returns {Promise<Array>} Array of filtered tasks
  */
 async function filterByStatus(status) {
-    try {
-        const response = await fetch(`${API_BASE_URL}/filter/status?status=${status}`);
-        if (!response.ok) throw new Error(await parseErrorMessage(response, 'Filter failed'));
-        const data = await response.json();
-        return data.data || [];
-    } catch (error) {
-        console.error('Error filtering by status:', error);
-        showToast(error.message || 'Error filtering tasks by status', 'danger');
-        return [];
-    }
+    const data = await apiRequest(
+        `${API_BASE_URL}/filter/status?status=${status}`,
+        {},
+        { errorContext: 'filtering by status', fallback: { data: [] } }
+    );
+    return data.data || [];
 }
 
 /**
@@ -193,16 +163,12 @@ async function filterByStatus(status) {
  * @returns {Promise<Array>} Array of filtered tasks
  */
 async function filterByPriority(priority) {
-    try {
-        const response = await fetch(`${API_BASE_URL}/filter/priority?priority=${priority}`);
-        if (!response.ok) throw new Error(await parseErrorMessage(response, 'Filter failed'));
-        const data = await response.json();
-        return data.data || [];
-    } catch (error) {
-        console.error('Error filtering by priority:', error);
-        showToast(error.message || 'Error filtering tasks by priority', 'danger');
-        return [];
-    }
+    const data = await apiRequest(
+        `${API_BASE_URL}/filter/priority?priority=${priority}`,
+        {},
+        { errorContext: 'filtering by priority', fallback: { data: [] } }
+    );
+    return data.data || [];
 }
 
 /**
@@ -210,14 +176,9 @@ async function filterByPriority(priority) {
  * @returns {Promise<Object>} Statistics object with total, completed, pending counts
  */
 async function fetchStatistics() {
-    try {
-        const response = await fetch(`${API_BASE_URL}/statistics`);
-        if (!response.ok) throw new Error(await parseErrorMessage(response, 'Failed to fetch statistics'));
-        const data = await response.json();
-        return data.data;
-    } catch (error) {
-        console.error('Error fetching statistics:', error);
-        showToast(error.message || 'Error loading statistics', 'danger');
-        return { total: 0, completed: 0, pending: 0 };
-    }
+    const data = await apiRequest(`${API_BASE_URL}/statistics`, {}, {
+        errorContext: 'fetching statistics',
+        fallback: { data: { total: 0, completed: 0, pending: 0 } }
+    });
+    return data.data;
 }

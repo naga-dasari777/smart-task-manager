@@ -44,10 +44,7 @@ public class TaskService {
      */
     public List<TaskDTO> getAllTasks() {
         log.info("Fetching all tasks");
-        return taskRepository.findAll()
-                .stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
+        return toDtoList(taskRepository.findAll());
     }
 
     /**
@@ -60,12 +57,7 @@ public class TaskService {
      */
     public TaskDTO getTaskById(Long id) {
         log.info("Fetching task with id: {}", id);
-        Task task = taskRepository.findById(id)
-                .orElseThrow(() -> {
-                    log.warn("Task not found with id: {}", id);
-                    return new ResourceNotFoundException("Task not found with id: " + id);
-                });
-        return convertToDTO(task);
+        return convertToDTO(findTaskOrThrow(id));
     }
 
     /**
@@ -84,7 +76,7 @@ public class TaskService {
         
         // Set priority with default value if not provided
         if (taskDTO.getPriority() != null) {
-            task.setPriority(parsePriority(taskDTO.getPriority()));
+            task.setPriority(Task.Priority.valueOf(taskDTO.getPriority().toUpperCase()));
         } else {
             task.setPriority(Task.Priority.MEDIUM);
         }
@@ -109,13 +101,8 @@ public class TaskService {
     public TaskDTO updateTask(Long id, TaskDTO taskDTO) {
         log.info("Updating task with id: {}", id);
         
-        Task task = taskRepository.findById(id)
-                .orElseThrow(() -> {
-                    log.warn("Task not found with id: {}", id);
-                    return new ResourceNotFoundException("Task not found with id: " + id);
-                });
+        Task task = findTaskOrThrow(id);
         
-        // Update fields if provided
         if (taskDTO.getTitle() != null && !taskDTO.getTitle().isBlank()) {
             task.setTitle(taskDTO.getTitle());
         }
@@ -123,13 +110,13 @@ public class TaskService {
             task.setDescription(taskDTO.getDescription());
         }
         if (taskDTO.getPriority() != null) {
-            task.setPriority(parsePriority(taskDTO.getPriority()));
+            task.setPriority(Task.Priority.valueOf(taskDTO.getPriority().toUpperCase()));
         }
         if (taskDTO.getDueDate() != null) {
             task.setDueDate(taskDTO.getDueDate());
         }
         if (taskDTO.getStatus() != null) {
-            task.setStatus(parseStatus(taskDTO.getStatus()));
+            task.setStatus(Task.TaskStatus.valueOf(taskDTO.getStatus().toUpperCase()));
         }
         
         Task updatedTask = taskRepository.save(task);
@@ -146,12 +133,7 @@ public class TaskService {
      */
     public void deleteTask(Long id) {
         log.info("Deleting task with id: {}", id);
-        
-        if (!taskRepository.existsById(id)) {
-            log.warn("Task not found with id: {}", id);
-            throw new ResourceNotFoundException("Task not found with id: " + id);
-        }
-        
+        findTaskOrThrow(id);
         taskRepository.deleteById(id);
         log.info("Task deleted successfully with id: {}", id);
     }
@@ -167,12 +149,7 @@ public class TaskService {
     public TaskDTO markTaskAsComplete(Long id) {
         log.info("Marking task as complete with id: {}", id);
         
-        Task task = taskRepository.findById(id)
-                .orElseThrow(() -> {
-                    log.warn("Task not found with id: {}", id);
-                    return new ResourceNotFoundException("Task not found with id: " + id);
-                });
-        
+        Task task = findTaskOrThrow(id);
         task.setStatus(Task.TaskStatus.COMPLETED);
         Task updatedTask = taskRepository.save(task);
         log.info("Task marked as complete with id: {}", id);
@@ -187,10 +164,7 @@ public class TaskService {
      */
     public List<TaskDTO> searchTasks(String keyword) {
         log.info("Searching tasks with keyword: {}", keyword);
-        return taskRepository.searchByKeyword(keyword)
-                .stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
+        return toDtoList(taskRepository.searchByKeyword(keyword));
     }
 
     /**
@@ -201,11 +175,8 @@ public class TaskService {
      */
     public List<TaskDTO> getTasksByStatus(String status) {
         log.info("Filtering tasks by status: {}", status);
-        Task.TaskStatus taskStatus = parseStatus(status);
-        return taskRepository.findByStatus(taskStatus)
-                .stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
+        Task.TaskStatus taskStatus = Task.TaskStatus.valueOf(status.toUpperCase());
+        return toDtoList(taskRepository.findByStatus(taskStatus));
     }
 
     /**
@@ -216,11 +187,8 @@ public class TaskService {
      */
     public List<TaskDTO> getTasksByPriority(String priority) {
         log.info("Filtering tasks by priority: {}", priority);
-        Task.Priority taskPriority = parsePriority(priority);
-        return taskRepository.findByPriority(taskPriority)
-                .stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
+        Task.Priority taskPriority = Task.Priority.valueOf(priority.toUpperCase());
+        return toDtoList(taskRepository.findByPriority(taskPriority));
     }
 
     /**
@@ -245,6 +213,20 @@ public class TaskService {
      * @param task Task entity
      * @return Task DTO
      */
+    private Task findTaskOrThrow(Long id) {
+        return taskRepository.findById(id)
+                .orElseThrow(() -> {
+                    log.warn("Task not found with id: {}", id);
+                    return new ResourceNotFoundException("Task not found with id: " + id);
+                });
+    }
+
+    private List<TaskDTO> toDtoList(List<Task> tasks) {
+        return tasks.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
     private TaskDTO convertToDTO(Task task) {
         return TaskDTO.builder()
                 .id(task.getId())
@@ -256,24 +238,6 @@ public class TaskService {
                 .createdAt(task.getCreatedAt())
                 .updatedAt(task.getUpdatedAt())
                 .build();
-    }
-
-    private Task.Priority parsePriority(String priority) {
-        try {
-            return Task.Priority.valueOf(priority.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException(
-                    "Invalid priority: '" + priority + "'. Accepted values: HIGH, MEDIUM, LOW");
-        }
-    }
-
-    private Task.TaskStatus parseStatus(String status) {
-        try {
-            return Task.TaskStatus.valueOf(status.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException(
-                    "Invalid status: '" + status + "'. Accepted values: PENDING, COMPLETED");
-        }
     }
 
     /**
