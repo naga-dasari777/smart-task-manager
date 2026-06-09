@@ -32,10 +32,12 @@ import java.util.Map;
  * @RestController: Combines @Controller and @ResponseBody
  * @RequestMapping: Base path for all endpoints in this controller
  * @Slf4j: Provides logging capability
+ *
+ * All endpoints are accessible at: http://localhost:8080/api/tasks/**
  */
 @Slf4j
 @RestController
-@RequestMapping("/tasks")
+@RequestMapping("/api/tasks")
 @Validated
 public class TaskController {
 
@@ -136,7 +138,7 @@ public class TaskController {
 
     /**
      * Search tasks by keyword
-     * GET /api/tasks/search?keyword=value
+     * GET /api/tasks/search/query?keyword=value
      * Searches task title and description
      *
      * @param keyword Search term
